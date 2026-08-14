@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EdgePredict — Quantitative Sports Forecasting</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div><div class="brand">EDGEPREDICT</div><div class="subbrand">Quantitative Sports Intelligence</div></div>
+    <div class="status"><span class="dot"></span> MODEL ENGINE ONLINE</div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div><span class="eyebrow">MARKET INTELLIGENCE</span><h1>Find mispriced probability.</h1><p>Forecast outcomes, quantify uncertainty, and rank opportunities by mathematical edge—not hype.</p></div>
+      <button id="refresh" class="button">Refresh models</button>
+    </section>
+
+    <section class="stats">
+      <div><span>MODELED EVENTS</span><strong id="events">24</strong></div>
+      <div><span>POSITIVE EV</span><strong id="positive">8</strong></div>
+      <div><span>AVG. EDGE</span><strong id="avgEdge">+5.8%</strong></div>
+      <div><span>MODEL STATUS</span><strong>CALIBRATED</strong></div>
+    </section>
+
+    <section class="toolbar">
+      <div class="tabs" id="tabs"><button class="active" data-sport="All">All</button><button data-sport="NBA">NBA</button><button data-sport="NFL">NFL</button><button data-sport="MLB">MLB</button><button data-sport="NHL">NHL</button></div>
+      <select id="market"><option>All markets</option><option>Moneyline</option><option>Spread</option><option>Total</option><option>Player Prop</option></select>
+    </section>
+
+    <section class="grid">
+      <div class="panel wide"><div class="panel-head"><h2>Highest modeled edge</h2><span>Pre-game snapshot</span></div><div id="opportunities"></div></div>
+      <div class="panel"><div class="panel-head"><h2>Model discipline</h2></div><div class="metric"><span>Calibration error</span><b>2.7%</b></div><div class="bar"><i style="width:73%"></i></div><div class="metric"><span>Model agreement</span><b>81%</b></div><div class="bar"><i style="width:81%"></i></div><div class="metric"><span>Data completeness</span><b>94%</b></div><div class="bar"><i style="width:94%"></i></div><p class="note">Forecasts are withheld when uncertainty or data quality crosses the risk threshold.</p></div>
+    </section>
+
+    <section class="panel explanation"><div class="panel-head"><div><h2>Why the model moves</h2><span id="selectedGame">Select a forecast above</span></div><span class="badge">EXPLAINABLE</span></div><div id="factors" class="factors"><div class="empty">Choose an event to inspect the model's reasoning.</div></div></section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
