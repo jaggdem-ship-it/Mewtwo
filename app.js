@@ -1,12 +1,27 @@
-const forecasts=[
- {sport:'NBA',event:'Boston Celtics vs. New York Knicks',market:'Moneyline',pick:'Boston Celtics',model:.684,implied:.594,edge:.09,ev:8.7,grade:'A',factors:[['Net rating','+8.4 vs opponent-adjusted baseline'],['Rest','+1.8% projected efficiency'],['Availability','Primary rotation intact']]},
- {sport:'NFL',event:'Kansas City Chiefs vs. Buffalo Bills',market:'Spread',pick:'Chiefs -2.5',model:.574,implied:.524,edge:.05,ev:4.2,grade:'B+',factors:[['Pass protection','Pressure mismatch favors KC'],['Explosiveness','+0.11 EPA/play projection'],['Market','Line stable despite public skew']]},
- {sport:'MLB',event:'Los Angeles Dodgers vs. San Diego Padres',market:'Moneyline',pick:'Dodgers',model:.621,implied:.548,edge:.073,ev:6.1,grade:'A-',factors:[['Starter','Projected K-BB% advantage'],['Bullpen','Higher late-inning availability'],['Park','Run environment modestly suppresses variance']]},
- {sport:'NHL',event:'Colorado Avalanche vs. Dallas Stars',market:'Total',pick:'Under 6.5',model:.563,implied:.513,edge:.05,ev:4.0,grade:'B+',factors:[['Goaltending','Above-average save projection'],['Pace','Lower possession forecast'],['Special teams','Penalty rate reduces expected volume']]},
- {sport:'NBA',event:'Denver Nuggets vs. Phoenix Suns',market:'Total',pick:'Over 228.5',model:.552,implied:.521,edge:.031,ev:2.8,grade:'B',factors:[['Pace','+3.2 possessions projected'],['Shot profile','Above-average rim/3P mix'],['Uncertainty','Moderate; edge near threshold']]}
-];
-let sport='All',market='All markets';
-const pct=x=>(x*100).toFixed(1)+'%';
-function render(){const list=forecasts.filter(x=>(sport==='All'||x.sport===sport)&&(market==='All markets'||x.market===market)).sort((a,b)=>b.edge-a.edge);document.querySelector('#opportunities').innerHTML=list.map((x,i)=>`<div class="op" data-i="${forecasts.indexOf(x)}"><div class="event"><b>${x.pick}</b><small>${x.sport} · ${x.event}</small></div><div><span class="muted">MODEL</span><div class="num">${pct(x.model)}</div></div><div><span class="muted">IMPLIED</span><div class="num">${pct(x.implied)}</div></div><div><span class="muted">EDGE</span><div class="edge good">+${pct(x.edge)}</div></div><div><span class="muted">GRADE</span><div class="grade">${x.grade}</div></div></div>`).join('')||'<div class="empty">No forecasts match the current filters.</div>';document.querySelectorAll('.op').forEach(el=>el.onclick=()=>show(+el.dataset.i));}
-function show(i){const x=forecasts[i];document.querySelector('#selectedGame').textContent=`${x.sport} · ${x.event} · ${x.market}`;document.querySelector('#factors').innerHTML=x.factors.map(f=>`<div class="factor"><span>${f[0]}</span><b>${f[1]}</b></div>`).join('')+`<div class="factor"><span>DECISION</span><b>${x.edge>=.04?'Positive EV candidate':'Edge below strong threshold'}</b></div>`;}
-document.querySelector('#tabs').onclick=e=>{if(e.target.tagName!=='BUTTON')return;document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));e.target.classList.add('active');sport=e.target.dataset.sport;render()};document.querySelector('#market').onchange=e=>{market=e.target.value;render()};document.querySelector('#refresh').onclick=()=>{document.querySelector('#events').textContent=String(24+Math.floor(Math.random()*4));render()};render();show(0);
+let forecasts=[];
+let sport='All', market='All markets';
+const pct=x=>Number.isFinite(x)?(x*100).toFixed(1)+'%':'—';
+const byMarket=x=>({h2h:'Moneyline',spreads:'Spread',totals:'Total'}[x]||x||'Unknown');
+async function loadForecasts(){
+  try{
+    const response=await fetch('/api/forecasts',{cache:'no-store'});
+    if(!response.ok) throw new Error(`Live API ${response.status}`);
+    const payload=await response.json();
+    forecasts=(payload.forecasts||[]).map(x=>({...x,sport:'NBA',event:`${x.homeTeam||'Home'} vs. ${x.awayTeam||'Away'}`,market:byMarket(x.marketType),pick:x.side==='HOME'?x.homeTeam:(x.side||'No qualified side'),grade:x.action==='BET'?'QUALIFIED':x.status==='NO_BET'?'NO BET':'WATCH',factors:[['Model probability',pct(x.modelProbability)],['Market probability',pct(x.marketProbability)],['Edge',pct(x.edge)],['Decision',x.action||x.status||'NO BET'],['Risk flags',(x.reasons||[]).join(', ')||'None']]}));
+    document.querySelector('#lastSync').textContent=new Date(payload.fetchedAt).toLocaleTimeString();
+    document.querySelector('#statusText').textContent='LIVE DATA CONNECTED';
+    render(); if(forecasts.length) show(0);
+  }catch(error){
+    forecasts=[];
+    document.querySelector('#statusText').textContent='LIVE DATA UNAVAILABLE';
+    document.querySelector('#opportunities').innerHTML=`<div class="empty">Live forecasts unavailable. ${error.message}. Configure the provider API key and backend before using this dashboard.</div>`;
+    updateStats([]);
+  }
+}
+function updateStats(list){const positive=list.filter(x=>x.action==='BET');const edges=list.map(x=>x.edge).filter(Number.isFinite);document.querySelector('#events').textContent=list.length;document.querySelector('#positive').textContent=positive.length;document.querySelector('#avgEdge').textContent=edges.length?`+${(edges.reduce((a,b)=>a+b,0)/edges.length*100).toFixed(1)}%`:'—';}
+function render(){const list=forecasts.filter(x=>(sport==='All'||x.sport===sport)&&(market==='All markets'||x.market===market)).sort((a,b)=>(b.edge??-1)-(a.edge??-1));updateStats(list);document.querySelector('#opportunities').innerHTML=list.map(x=>`<div class="op" data-i="${forecasts.indexOf(x)}"><div class="event"><b>${x.pick}</b><small>${x.sport} · ${x.event}</small></div><div><span class="muted">MODEL</span><div class="num">${pct(x.modelProbability)}</div></div><div><span class="muted">IMPLIED</span><div class="num">${pct(x.marketProbability)}</div></div><div><span class="muted">EDGE</span><div class="edge ${x.action==='BET'?'good':''}">${x.edge>=0?'+':''}${pct(x.edge)}</div></div><div><span class="muted">DECISION</span><div class="grade">${x.grade}</div></div></div>`).join('')||'<div class="empty">No live forecasts match the current filters.</div>';document.querySelectorAll('.op').forEach(el=>el.onclick=()=>show(+el.dataset.i));}
+function show(i){const x=forecasts[i];if(!x)return;document.querySelector('#selectedGame').textContent=`${x.sport} · ${x.event} · ${x.market}`;document.querySelector('#factors').innerHTML=x.factors.map(f=>`<div class="factor"><span>${f[0]}</span><b>${f[1]}</b></div>`).join('');}
+document.querySelector('#tabs').onclick=e=>{if(e.target.tagName!=='BUTTON')return;document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));e.target.classList.add('active');sport=e.target.dataset.sport;render()};
+document.querySelector('#market').onchange=e=>{market=e.target.value;render()};
+document.querySelector('#refresh').onclick=loadForecasts;
+loadForecasts();setInterval(loadForecasts,60000);
